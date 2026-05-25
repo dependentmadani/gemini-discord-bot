@@ -21,6 +21,12 @@ const API_KEY = process.env.OPENROUTER_API_KEY;
 const BOT_TOKEN = process.env.TOKEN;
 const CHANNEL_ID = process.env.CHANNEL_ID;
 
+// Fail loudly at startup if required config is missing (e.g. env vars not set
+// on the cloud host). Otherwise a missing key only shows up as a runtime 401.
+for (const [name, value] of Object.entries({ TOKEN: BOT_TOKEN, OPENROUTER_API_KEY: API_KEY, CHANNEL_ID })) {
+    if (!value) console.warn(`WARNING: ${name} is not set — the bot will not work correctly until it is.`);
+}
+
 const bot = new discord.Client({
     intents: Object.keys(discord.GatewayIntentBits),
 });
