@@ -1,15 +1,25 @@
 
 require('dotenv/config');
 const discord = require('discord.js');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-const MODEL = "gemini-pro";
-const API_KEY = process.env.API_KEY;
+// Cheapest paid models in priority order (lowest cost first). Paid models
+// avoid the congested free-tier rate limits while costing only fractions of a
+// cent per message. OpenRouter automatically falls back to the next one if a
+// model is rate-limited (429), down, or errors; you're billed only for the
+// model that actually answers.
+// Override with OPENROUTER_MODEL in .env (single id or comma-separated list).
+const DEFAULT_MODELS = [
+    "inclusionai/ling-2.6-flash",       // ~$0.01/$0.03 per 1M tokens
+    "mistralai/mistral-nemo",           // ~$0.02/$0.03 per 1M tokens
+    "meta-llama/llama-3.1-8b-instruct", // ~$0.02/$0.05 per 1M tokens
+];
+const MODELS = process.env.OPENROUTER_MODEL
+    ? process.env.OPENROUTER_MODEL.split(",").map(s => s.trim()).filter(Boolean)
+    : DEFAULT_MODELS;
+
+const API_KEY = process.env.OPENROUTER_API_KEY;
 const BOT_TOKEN = process.env.TOKEN;
 const CHANNEL_ID = process.env.CHANNEL_ID;
-
-const ai = new GoogleGenerativeAI(API_KEY);
-const model = ai.getGenerativeModel({model: MODEL});
 
 const bot = new discord.Client({
     intents: Object.keys(discord.GatewayIntentBits),
@@ -26,10 +36,33 @@ bot.on('messageCreate', async (message) => {
         if (message.author.bot) return;
         if (message.channel.id !== CHANNEL_ID) return;
 
-        const { response } = await model.generateContent(message.cleanContent);
+        await message.channel.sendTyping();
+
+        const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${API_KEY}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                models: MODELS,
+                messages: [
+                    { role: "user", content: message.cleanContent },
+                ],
+            }),
+        });
+
+        const data = await res.json();
+        const reply = data.choices?.[0]?.message?.content;
+
+        if (!res.ok || !reply) {
+            console.log("OpenRouter error:", res.status, JSON.stringify(data));
+            await message.reply("⚠️ Sorry, I couldn't get a response right now. Please try again in a moment.");
+            return;
+        }
 
         await message.reply({
-            content: response.text(),
+            content: reply.slice(0, 2000),
         })
 
 

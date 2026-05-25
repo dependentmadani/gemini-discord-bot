@@ -1,5 +1,5 @@
 {
-  "name": "gpt-3.5-chat-bot",
+  "name": "openrouter-discord-bot",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -11,10 +11,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@google/generative-ai": "^0.3.1",
     "discord.js": "^14.7.1",
-    "dotenv": "^16.0.3",
-    "openai": "^3.2.1"
+    "dotenv": "^16.0.3"
   },
   "devDependencies": {
     "nodemon": "^2.0.21"
