@@ -27,6 +27,18 @@ for (const [name, value] of Object.entries({ TOKEN: BOT_TOKEN, OPENROUTER_API_KE
     if (!value) console.warn(`WARNING: ${name} is not set — the bot will not work correctly until it is.`);
 }
 
+// The bot's personality. Override with SYSTEM_PROMPT in .env to change its vibe.
+const SYSTEM_PROMPT = process.env.SYSTEM_PROMPT ||
+    "You're a witty, playful Discord bot. Keep replies fun, upbeat, and " +
+    "conversational, with light humor and the occasional emoji. Be friendly " +
+    "and a little cheeky, but still genuinely helpful. Keep it short — usually " +
+    "a sentence or two — since this is casual chat. Never sound formal or robotic.";
+
+// Rolling per-channel conversation history so the bot can follow a back-and-forth.
+// In-memory only: it resets on restart, which is fine for a casual chat bot.
+const MAX_HISTORY = 10; // keep the last N user/assistant messages
+const histories = new Map();
+
 const bot = new discord.Client({
     intents: Object.keys(discord.GatewayIntentBits),
 });
@@ -44,6 +56,11 @@ bot.on('messageCreate', async (message) => {
 
         await message.channel.sendTyping();
 
+        // Build this turn's context: previous history + the new user message.
+        // Not committed to memory yet — only stored if the request succeeds.
+        const prev = histories.get(message.channel.id) || [];
+        const history = [...prev, { role: "user", content: message.cleanContent }];
+
         const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
             headers: {
@@ -53,7 +70,8 @@ bot.on('messageCreate', async (message) => {
             body: JSON.stringify({
                 models: MODELS,
                 messages: [
-                    { role: "user", content: message.cleanContent },
+                    { role: "system", content: SYSTEM_PROMPT },
+                    ...history,
                 ],
             }),
         });
@@ -66,6 +84,9 @@ bot.on('messageCreate', async (message) => {
             await message.reply("⚠️ Sorry, I couldn't get a response right now. Please try again in a moment.");
             return;
         }
+
+        // Commit the exchange to memory, trimmed to the most recent messages.
+        histories.set(message.channel.id, [...history, { role: "assistant", content: reply }].slice(-MAX_HISTORY));
 
         await message.reply({
             content: reply.slice(0, 2000),
