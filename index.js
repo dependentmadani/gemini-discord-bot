@@ -9,9 +9,9 @@ const discord = require('discord.js');
 // model that actually answers.
 // Override with OPENROUTER_MODEL in .env (single id or comma-separated list).
 const DEFAULT_MODELS = [
-    "inclusionai/ling-2.6-flash",       // ~$0.01/$0.03 per 1M tokens
     "mistralai/mistral-nemo",           // ~$0.02/$0.03 per 1M tokens
     "meta-llama/llama-3.1-8b-instruct", // ~$0.02/$0.05 per 1M tokens
+    "inclusionai/ling-2.6-flash",       // ~$0.01/$0.03 per 1M tokens
 ];
 const MODELS = process.env.OPENROUTER_MODEL
     ? process.env.OPENROUTER_MODEL.split(",").map(s => s.trim()).filter(Boolean)
